@@ -1,7 +1,9 @@
 // Copyright (c) 2023 Zhennanc Ltd. All rights reserved.
-#include "cutlass/cutlass.cuh"
+#include "wmma/wmma.cuh"
 
 #include <benchmark/benchmark.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 #include <algorithm>
 #include <cmath>
@@ -13,11 +15,11 @@
 #include "bm_lib/utils.h"
 
 template <typename TIN, typename TOUT>
-class Cutlass : public benchmark::Fixture {
+class Wmma : public benchmark::Fixture {
  public:
   void callKernel(benchmark::State &state) {
     // call kernel
-    cutlass_gemm(A, B, C, M, N, K);
+    wmma_gemm<float, float>(dA_f, dB_f, C, M, N, K);
   }
 
   void SetUp(const ::benchmark::State &state) BENCHMARK_OVERRIDE {
@@ -27,34 +29,42 @@ class Cutlass : public benchmark::Fixture {
     K = state.range(0);
 
     // Populate array
-    cudaMallocManaged((void **)&A, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&B, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&C, sizeof(TIN) * dataSize);
+    cudaMallocManaged(&A, sizeof(TIN) * dataSize);
+    cudaMallocManaged(&B, sizeof(TIN) * dataSize);
+    cudaMallocManaged(&C, sizeof(TOUT) * dataSize);
+
+    cudaMallocManaged(&dA_f, sizeof(half) * dataSize);
+    cudaMallocManaged(&dB_f, sizeof(half) * dataSize);
 
     cudabm::genRandom(A, dataSize);
     cudabm::genRandom(B, dataSize);
+
+    wmma_load<TIN>(A, B, dA_f, dB_f, M, N, K);
   }
 
   void TearDown(const ::benchmark::State &st) BENCHMARK_OVERRIDE {
     cudaFree(A);
     cudaFree(B);
     cudaFree(C);
+    cudaFree(dA_f);
+    cudaFree(dB_f);
   }
 
   double getDataSize() { return (double)dataSize; }
 
  private:
-  TIN *A, *dA;
-  TIN *B, *dB;
-  TIN *C, *dC;
+  TIN *A, *B;
+  half *dA_f, *dB_f;
+  TOUT *C;
+
   int M;
   int N;
   int K;
-  long int dataSize;
+  long int dataSize = 0;
 };
 
-#define BENCHMARK_CUTLASS_OP(name, dType1, dType2)                     \
-  BENCHMARK_TEMPLATE_DEFINE_F(Cutlass, name, dType1, dType2)           \
+#define BENCHMARK_WMMA_OP(name, dType1, dType2)                        \
+  BENCHMARK_TEMPLATE_DEFINE_F(Wmma, name, dType1, dType2)              \
   (benchmark::State & st) {                                            \
     for (auto _ : st) {                                                \
       callKernel(st);                                                  \
@@ -63,13 +73,12 @@ class Cutlass : public benchmark::Fixture {
     st.counters["FLOPS"] = benchmark::Counter{                         \
         getDataSize(), benchmark::Counter::kIsIterationInvariantRate}; \
   }                                                                    \
-  BENCHMARK_REGISTER_F(Cutlass, name)                                  \
+  BENCHMARK_REGISTER_F(Wmma, name)                                     \
       ->Unit(benchmark::kMillisecond)                                  \
       ->RangeMultiplier(2)                                             \
       ->Range(1024, 2048);
 
-#define BENCHMARK_CUTLASS_OP_TYPE(dType1, dType2) \
-  BENCHMARK_CUTLASS_OP(CUTLASS_##dType1, dType1, dType2)
+#define BENCHMARK_WMMA_OP_TYPE(dType1, dType2) \
+  BENCHMARK_WMMA_OP(Wmma_##dType1, dType1, dType2)
 
-BENCHMARK_CUTLASS_OP_TYPE(float, float)
-// BENCHMARK_GEMM1_OP_TYPE(int)
+BENCHMARK_WMMA_OP_TYPE(float, float)
