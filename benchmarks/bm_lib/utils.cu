@@ -1,12 +1,12 @@
 // Copyright (c) 2023 Zhennanc Ltd. All rights reserved.
-#include "utils.h"
-
 #include <algorithm>
 #include <array>
 #include <cstdarg>
 #include <memory>
 #include <random>
 #include <vector>
+
+#include "utils.h"
 
 namespace cudabm {
 

@@ -12,8 +12,7 @@
 
 #include "bm_lib/utils.h"
 
-
-template <typename TIN,  typename TOUT>
+template <typename TIN, typename TOUT>
 class Cutlass : public benchmark::Fixture {
  public:
   void callKernel(benchmark::State &state) {
@@ -45,17 +44,17 @@ class Cutlass : public benchmark::Fixture {
   double getDataSize() { return (double)dataSize; }
 
  private:
-   TIN *A, *dA;
-   TIN *B, *dB;
-   TIN *C, *dC;
-   int M;
-   int N;
-   int K;
-   long int dataSize;
+  TIN *A, *dA;
+  TIN *B, *dB;
+  TIN *C, *dC;
+  int M;
+  int N;
+  int K;
+  long int dataSize;
 };
 
-#define BENCHMARK_CUTLASS_OP(name, dType1, dType2)                                \
-  BENCHMARK_TEMPLATE_DEFINE_F(Cutlass, name, dType1, dType2)                   \
+#define BENCHMARK_CUTLASS_OP(name, dType1, dType2)                     \
+  BENCHMARK_TEMPLATE_DEFINE_F(Cutlass, name, dType1, dType2)           \
   (benchmark::State & st) {                                            \
     for (auto _ : st) {                                                \
       callKernel(st);                                                  \
@@ -64,13 +63,14 @@ class Cutlass : public benchmark::Fixture {
     st.counters["FLOPS"] = benchmark::Counter{                         \
         getDataSize(), benchmark::Counter::kIsIterationInvariantRate}; \
   }                                                                    \
-  BENCHMARK_REGISTER_F(Cutlass, name)                                 \
+  BENCHMARK_REGISTER_F(Cutlass, name)                                  \
       ->Unit(benchmark::kMillisecond)                                  \
       ->RangeMultiplier(2)                                             \
-      ->Iterations(1)                                             \
+      ->Iterations(1)                                                  \
       ->Range(1024, 2048);
 
-#define BENCHMARK_CUTLASS_OP_TYPE(dType1, dType2) BENCHMARK_CUTLASS_OP(CUTLASS_##dType1, dType1, dType2)
+#define BENCHMARK_CUTLASS_OP_TYPE(dType1, dType2) \
+  BENCHMARK_CUTLASS_OP(CUTLASS_##dType1, dType1, dType2)
 
 BENCHMARK_CUTLASS_OP_TYPE(float, float)
 // BENCHMARK_GEMM1_OP_TYPE(int)
