@@ -1,5 +1,5 @@
 // Copyright (c) 2023 Zhennanc Ltd. All rights reserved.
-#include "wmma/wmma.cuh"
+#include "bmma/bmma.cuh"
 
 #include <benchmark/benchmark.h>
 #include <cuda_runtime.h>
@@ -15,11 +15,11 @@
 #include "bm_lib/utils.h"
 
 template <typename TIN, typename TOUT>
-class Wmma : public benchmark::Fixture {
+class Bmma : public benchmark::Fixture {
  public:
   void callKernel(benchmark::State &state) {
     // call kernel
-    wmma_gemm<float, float>(dA_f, dB_f, C, M, N, K);
+    bmma_gemm<float, float>(dA_f, dB_f, C, M, N, K);
   }
 
   void SetUp(const ::benchmark::State &state) BENCHMARK_OVERRIDE {
@@ -39,7 +39,7 @@ class Wmma : public benchmark::Fixture {
     cudabm::genRandom(A, dataSize);
     cudabm::genRandom(B, dataSize);
 
-    wmma_load<TIN>(A, B, dA_f, dB_f, M, N, K);
+    bmma_load<TIN>(A, B, dA_f, dB_f, M, N, K);
   }
 
   void TearDown(const ::benchmark::State &st) BENCHMARK_OVERRIDE {
@@ -63,8 +63,8 @@ class Wmma : public benchmark::Fixture {
   long int dataSize = 0;
 };
 
-#define BENCHMARK_WMMA_OP(name, dType1, dType2)                        \
-  BENCHMARK_TEMPLATE_DEFINE_F(Wmma, name, dType1, dType2)              \
+#define BENCHMARK_BMMA_OP(name, dType1, dType2)                        \
+  BENCHMARK_TEMPLATE_DEFINE_F(Bmma, name, dType1, dType2)              \
   (benchmark::State & st) {                                            \
     for (auto _ : st) {                                                \
       callKernel(st);                                                  \
@@ -73,12 +73,12 @@ class Wmma : public benchmark::Fixture {
     st.counters["FLOPS"] = benchmark::Counter{                         \
         getDataSize(), benchmark::Counter::kIsIterationInvariantRate}; \
   }                                                                    \
-  BENCHMARK_REGISTER_F(Wmma, name)                                     \
+  BENCHMARK_REGISTER_F(Bmma, name)                                     \
       ->Unit(benchmark::kMillisecond)                                  \
       ->RangeMultiplier(2)                                             \
       ->Range(1024, 2048);
 
-#define BENCHMARK_WMMA_OP_TYPE(dType1, dType2) \
-  BENCHMARK_WMMA_OP(Wmma_##dType1, dType1, dType2)
+#define BENCHMARK_BMMA_OP_TYPE(dType1, dType2) \
+  BENCHMARK_BMMA_OP(Bmma_##dType1, dType1, dType2)
 
-BENCHMARK_WMMA_OP_TYPE(float, float)
+BENCHMARK_BMMA_OP_TYPE(float, float)

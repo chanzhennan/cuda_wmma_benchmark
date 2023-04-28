@@ -5,6 +5,11 @@
 
 #include <string>
 #include <vector>
+
+#define PAD(X, Y) (X % Y ? (X / Y + 1) * Y : X)
+#define WARP_SIZE 32
+#define BLOCK_DIM_DEFAULT 512
+
 namespace cudabm {
 
 // benchmark string helper
