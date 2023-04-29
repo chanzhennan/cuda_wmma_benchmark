@@ -30,8 +30,8 @@ class Cutlass : public benchmark::Fixture {
     // Populate array
     cudaMallocManaged((void **)&dA, sizeof(TIN) * dataSize);
     cudaMallocManaged((void **)&dB, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&dC, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&testC, sizeof(TIN) * dataSize);
+    cudaMallocManaged((void **)&dC, sizeof(TOUT) * dataSize);
+    cudaMallocManaged((void **)&testC, sizeof(TOUT) * dataSize);
 
     cudabm::genRandom(dA, dataSize);
     cudabm::genRandom(dB, dataSize);
@@ -40,7 +40,7 @@ class Cutlass : public benchmark::Fixture {
   }
 
   void TearDown(const ::benchmark::State &st) BENCHMARK_OVERRIDE {
-    if (!cudabm::Equal<float>(M * N, dC, testC, 1e-2))
+    if (!cudabm::Equal<TOUT>(M * N, dC, testC, 1e-4))
       std::runtime_error("Value diff occur in cutlass");
 
     cudaFree(dA);

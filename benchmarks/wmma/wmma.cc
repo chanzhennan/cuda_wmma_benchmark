@@ -19,7 +19,7 @@ class Wmma : public benchmark::Fixture {
  public:
   void callKernel(benchmark::State &state) {
     // call kernel
-    wmma_gemm<float, float>(dA_f, dB_f, C, M, N, K);
+    wmma_gemm<TIN, TIN>(dA_f, dB_f, dC, M, N, K);
   }
 
   void SetUp(const ::benchmark::State &state) BENCHMARK_OVERRIDE {
@@ -29,23 +29,32 @@ class Wmma : public benchmark::Fixture {
     K = state.range(0);
 
     // Populate array
-    cudaMallocManaged(&A, sizeof(TIN) * dataSize);
-    cudaMallocManaged(&B, sizeof(TIN) * dataSize);
-    cudaMallocManaged(&C, sizeof(TOUT) * dataSize);
+    cudaMallocManaged(&dA, sizeof(TIN) * dataSize);
+    cudaMallocManaged(&dB, sizeof(TIN) * dataSize);
+    cudaMallocManaged(&dC, sizeof(TOUT) * dataSize);
+    cudaMallocManaged(&testC, sizeof(TOUT) * dataSize);
 
     cudaMallocManaged(&dA_f, sizeof(half) * dataSize);
     cudaMallocManaged(&dB_f, sizeof(half) * dataSize);
 
-    cudabm::genRandom(A, dataSize);
-    cudabm::genRandom(B, dataSize);
+    cudabm::genRandom(dA, dataSize);
+    cudabm::genRandom(dB, dataSize);
 
-    wmma_load<TIN>(A, B, dA_f, dB_f, M, N, K);
+    wmma_load<TIN>(dA, dB, dA_f, dB_f, M, N, K);
+
+    cudabm::Gemm(dA, dB, testC, M, N, K);
   }
 
   void TearDown(const ::benchmark::State &st) BENCHMARK_OVERRIDE {
-    cudaFree(A);
-    cudaFree(B);
-    cudaFree(C);
+    // verify
+    if (!cudabm::Equal<TIN>(M * N, dC, testC, 1e-4))
+      std::runtime_error("Value diff occur in wmma");
+
+    // free
+    cudaFree(dA);
+    cudaFree(dB);
+    cudaFree(dC);
+    cudaFree(testC);
     cudaFree(dA_f);
     cudaFree(dB_f);
   }
@@ -53,9 +62,10 @@ class Wmma : public benchmark::Fixture {
   double getDataSize() { return (double)dataSize; }
 
  private:
-  TIN *A, *B;
+  TIN *dA, *dB;
   half *dA_f, *dB_f;
-  TOUT *C;
+  TOUT *dC;
+  TOUT *testC;
 
   int M;
   int N;
