@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdarg>
+#include <exception>
 #include <memory>
 #include <random>
 
@@ -80,6 +81,36 @@ float Sum(float* vec, size_t len) {
   return sum;
 }
 
+void Gemm(float* dA, float* dB, float* dC, int m, int n, int k) {
+  float alpha = 1.0f;
+  float beta = 0.0f;
+  cublasHandle_t handle;
+  cublasStatus_t status = cublasCreate(&handle);
+
+  if (status != CUBLAS_STATUS_SUCCESS)
+    std::runtime_error("!!!! CUBLAS initialization error\n");
+
+  // C = A X B
+  status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &alpha, dB, m,
+                       dA, k, &beta, dC, m);
+
+  cudaDeviceSynchronize();
+}
+
+// Equal
+template <typename Type>
+bool Equal(const unsigned int n, const Type* x, const Type* y,
+           const Type tolerance) {
+  bool ok = true;
+  for (unsigned int i = 0; i < n; ++i) {
+    if (std::abs(x[i] - y[i]) > std::abs(tolerance)) {
+      ok = false;
+      break;
+    }
+  }
+  return ok;
+}
+
 template <typename T, typename S>
 int cublas_gemm_ex(cublasHandle_t handle, cublasOperation_t transA,
                    cublasOperation_t transB, int m, int n, int k, T* A, T* B,
@@ -106,5 +137,8 @@ int cublas_gemm_ex(cublasHandle_t handle, cublasOperation_t transA,
   else
     return -1;
 }
+
+template bool Equal<float>(const unsigned int n, const float* x, const float* y,
+                           const float tolerance);
 
 }  // namespace cudabm
