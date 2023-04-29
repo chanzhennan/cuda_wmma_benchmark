@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -17,7 +18,7 @@ class Cutlass : public benchmark::Fixture {
  public:
   void callKernel(benchmark::State &state) {
     // call kernel
-    cutlass_gemm(A, B, C, M, N, K);
+    cutlass_gemm(dA, dB, dC, M, N, K);
   }
 
   void SetUp(const ::benchmark::State &state) BENCHMARK_OVERRIDE {
@@ -27,26 +28,32 @@ class Cutlass : public benchmark::Fixture {
     K = state.range(0);
 
     // Populate array
-    cudaMallocManaged((void **)&A, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&B, sizeof(TIN) * dataSize);
-    cudaMallocManaged((void **)&C, sizeof(TIN) * dataSize);
+    cudaMallocManaged((void **)&dA, sizeof(TIN) * dataSize);
+    cudaMallocManaged((void **)&dB, sizeof(TIN) * dataSize);
+    cudaMallocManaged((void **)&dC, sizeof(TIN) * dataSize);
+    cudaMallocManaged((void **)&testC, sizeof(TIN) * dataSize);
 
-    cudabm::genRandom(A, dataSize);
-    cudabm::genRandom(B, dataSize);
+    cudabm::genRandom(dA, dataSize);
+    cudabm::genRandom(dB, dataSize);
+
+    cudabm::Gemm(dA, dB, testC, M, N, K);
   }
 
   void TearDown(const ::benchmark::State &st) BENCHMARK_OVERRIDE {
-    cudaFree(A);
-    cudaFree(B);
-    cudaFree(C);
+    if (!cudabm::Equal<float>(M * N, dC, testC, 1e-2))
+      std::runtime_error("Value diff occur in cutlass");
+
+    cudaFree(dA);
+    cudaFree(dB);
+    cudaFree(dC);
+    cudaFree(testC);
   }
 
   double getDataSize() { return (double)dataSize; }
 
  private:
-  TIN *A, *dA;
-  TIN *B, *dB;
-  TIN *C, *dC;
+  TIN *dA, *dB, *dC;
+  TIN *testC;
   int M;
   int N;
   int K;
