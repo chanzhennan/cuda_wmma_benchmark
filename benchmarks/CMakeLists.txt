@@ -2,10 +2,15 @@ add_subdirectory(bm_lib)
 
 set(SOURCE_FILES cuda_benchmark.cc)
 
-list(APPEND SOURCE_FILES cutlass/cutlass.cc cutlass/cutlass.cu wmma/wmma.cc
-     wmma/wmma.cu
-     # bmma/bmma.cc bmma/bmma.cu
-)
+list(
+  APPEND
+  SOURCE_FILES
+  cutlass/cutlass.cc
+  cutlass/cutlass.cu
+  wmma/wmma.cc
+  wmma/wmma.cu
+  bmma/bmma.cc
+  bmma/bmma.cu)
 
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}" "-std=c++17 -arch=sm_89")
 cuda_add_executable(cuda_benchmark ${SOURCE_FILES})
